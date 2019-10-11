@@ -148,14 +148,11 @@ void BaseRealSenseNode::setupErrorCallback()
     {
         s.set_notifications_callback([&](const rs2::notification& n)
         {
-            std::vector<std::string> error_strings({"RT IC2 Config error", 
-                                                    "Motion Module force pause",
-                                                    "stream start failure"});
             if (n.get_severity() >= RS2_LOG_SEVERITY_ERROR)
             {
                 ROS_WARN_STREAM("Hardware Notification:" << n.get_description() << "," << n.get_timestamp() << "," << n.get_severity() << "," << n.get_category());
             }
-            if (error_strings.end() != find_if(error_strings.begin(), error_strings.end(), [&n] (std::string err) 
+            if (_reset_on_error_strings.end() != find_if(_reset_on_error_strings.begin(), _reset_on_error_strings.end(), [&n] (std::string err)
                                         {return (n.get_description().find(err) != std::string::npos); }))
             {
                 ROS_ERROR_STREAM("Hardware Reset is needed. use option: initial_reset:=true");
@@ -490,6 +487,10 @@ void BaseRealSenseNode::getParameters()
     _pnh.param("angular_velocity_cov", _angular_velocity_cov, static_cast<double>(0.01));
     _pnh.param("hold_back_imu_for_frames", _hold_back_imu_for_frames, HOLD_BACK_IMU_FOR_FRAMES);
     _pnh.param("publish_odom_tf", _publish_odom_tf, PUBLISH_ODOM_TF);
+
+    _pnh.param("reset_on_error", _reset_on_error_strings, {"RT IC2 Config error",
+                                                           "Motion Module force pause",
+                                                           "stream start failure"});
 }
 
 void BaseRealSenseNode::setupDevice()
@@ -1309,7 +1310,7 @@ void BaseRealSenseNode::pose_callback(rs2::frame frame)
         tf::Quaternion q(-msg.transform.rotation.x,-msg.transform.rotation.y,-msg.transform.rotation.z,msg.transform.rotation.w);
         tfv=tf::quatRotate(q,tfv);
         tf::vector3TFToMsg(tfv,v_msg.vector);
-	
+
         geometry_msgs::Vector3Stamped om_msg;
         om_msg.vector.x = -pose.angular_velocity.z;
         om_msg.vector.y = -pose.angular_velocity.x;
@@ -1317,7 +1318,7 @@ void BaseRealSenseNode::pose_callback(rs2::frame frame)
         tf::vector3MsgToTF(om_msg.vector,tfv);
         tfv=tf::quatRotate(q,tfv);
         tf::vector3TFToMsg(tfv,om_msg.vector);
-	
+
 
         nav_msgs::Odometry odom_msg;
         _seq[stream_index] += 1;
@@ -1349,7 +1350,7 @@ void BaseRealSenseNode::pose_callback(rs2::frame frame)
 void BaseRealSenseNode::frame_callback(rs2::frame frame)
 {
     _synced_imu_publisher->Pause();
-    
+
     try{
         double frame_time = frame.get_timestamp();
 
@@ -1850,8 +1851,8 @@ void BaseRealSenseNode::publishPointCloud(rs2::points pc, const ros::Time& t, co
     if (use_texture)
     {
         std::set<rs2_format> available_formats{ rs2_format::RS2_FORMAT_RGB8, rs2_format::RS2_FORMAT_Y8 };
-        
-        texture_frame_itr = find_if(frameset.begin(), frameset.end(), [&texture_source_id, &available_formats] (rs2::frame f) 
+
+        texture_frame_itr = find_if(frameset.begin(), frameset.end(), [&texture_source_id, &available_formats] (rs2::frame f)
                                 {return (rs2_stream(f.get_profile().stream_type()) == texture_source_id) &&
                                             (available_formats.find(f.get_profile().format()) != available_formats.end()); });
         if (texture_frame_itr == frameset.end())
@@ -1891,7 +1892,7 @@ void BaseRealSenseNode::publishPointCloud(rs2::points pc, const ros::Time& t, co
     msg_pointcloud.is_dense = true;
 
     sensor_msgs::PointCloud2Modifier modifier(msg_pointcloud);
-    modifier.setPointCloud2FieldsByString(1, "xyz");    
+    modifier.setPointCloud2FieldsByString(1, "xyz");
 
     vertex = pc.get_vertices();
     if (use_texture)
@@ -1993,8 +1994,8 @@ rs2::stream_profile BaseRealSenseNode::getAProfile(const stream_index_pair& stre
 {
     const std::vector<rs2::stream_profile> profiles = _sensors[stream].get_stream_profiles();
     return *(std::find_if(profiles.begin(), profiles.end(),
-                                            [&stream] (const rs2::stream_profile& profile) { 
-                                                return ((profile.stream_type() == stream.first) && (profile.stream_index() == stream.second)); 
+                                            [&stream] (const rs2::stream_profile& profile) {
+                                                return ((profile.stream_type() == stream.first) && (profile.stream_index() == stream.second));
                                             }));
 }
 
@@ -2110,4 +2111,3 @@ bool BaseRealSenseNode::getEnabledProfile(const stream_index_pair& stream_index,
         profile =  *it;
         return true;
     }
-
