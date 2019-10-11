@@ -2,8 +2,8 @@
 Changelog for package realsense2_camera
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.3.0 (2019-10-11)
+------------------
 * Allow parametrizing list of resettable errors
   (cherry picked from commit 0f0aafbf1a91430a0a5a82d2f8208e222ea31e6e)
 * Reorganize and add missing dependencies
