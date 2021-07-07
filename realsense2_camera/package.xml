@@ -19,7 +19,6 @@
   <depend>diagnostic_updater</depend>
   <depend>ddynamic_reconfigure</depend>
   <depend>genmsg</depend>
-  <depend>image_transport</depend>
   <depend>nav_msgs</depend>
   <depend>nodelet</depend>
   <depend>roscpp</depend>
